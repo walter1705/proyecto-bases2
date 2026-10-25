@@ -205,34 +205,9 @@ ORDER BY rh.fecha_checkin;
 
 
 -- C6. Vista materializada de ocupación mensual.
-
--- Elimina la vista previa si existe.
-BEGIN
-    EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW mv_ocupacion_mensual';
-EXCEPTION
-    WHEN OTHERS THEN
-        IF SQLCODE != -12003 THEN
-            RAISE;
-        END IF;
-END;
-/
-
-CREATE MATERIALIZED VIEW mv_ocupacion_mensual
-BUILD IMMEDIATE
-REFRESH COMPLETE ON DEMAND
-AS
-SELECT 
-    m.nombre AS municipio,
-    TO_CHAR(rh.fecha_checkin, 'YYYY-MM') AS mes,
-    COUNT(DISTINCT rh.id_reserva) AS total_reservas,
-    COUNT(DISTINCT rh.id_habitacion) AS total_habitaciones_reservadas
-FROM municipio m
-JOIN alojamiento a ON m.id_municipio = a.id_municipio
-JOIN habitacion h ON a.id_alojamiento = h.id_alojamiento
-JOIN reserva_habitacion rh ON h.id_habitacion = rh.id_habitacion
-JOIN reserva r ON r.id_reserva = rh.id_reserva
-WHERE r.estado <> 'CANCELADA'
-GROUP BY m.nombre, TO_CHAR(rh.fecha_checkin, 'YYYY-MM');
+SELECT *
+FROM mv_ocupacion_mensual
+ORDER BY anio, mes, municipio, alojamiento;
 
 -- COMPLETE mantiene exactitud con COUNT DISTINCT.
 -- ON DEMAND evita recalcular la vista en cada transacción.
