@@ -1,26 +1,46 @@
--- 1. Ocupación por municipio y mes.
-SELECT *
-FROM (
+-- C1. Ocupación real por municipio, año y mes (no cantidad de reservas).
+WITH NochesOcupadas AS (
     SELECT m.nombre AS municipio,
-           TO_CHAR(rh.fecha_checkin, 'MM') AS mes,
-           rh.id_reserva
+           EXTRACT(YEAR FROM fecha_noche) AS anio,
+           EXTRACT(MONTH FROM fecha_noche) AS mes,
+           fecha_noche,
+           rh.id_habitacion
     FROM municipio m
     JOIN alojamiento a ON m.id_municipio = a.id_municipio
     JOIN habitacion h ON a.id_alojamiento = h.id_alojamiento
     JOIN reserva_habitacion rh ON h.id_habitacion = rh.id_habitacion
+    JOIN reserva r ON r.id_reserva = rh.id_reserva
+    CROSS JOIN LATERAL (
+        SELECT TRUNC(rh.fecha_checkin) + LEVEL - 1 AS fecha_noche
+        FROM dual
+        CONNECT BY LEVEL <= TRUNC(rh.fecha_checkout) - TRUNC(rh.fecha_checkin)
+    ) noches
+    WHERE r.estado <> 'CANCELADA'
+),
+NochesUnicas AS (
+    SELECT DISTINCT municipio, anio, mes, fecha_noche, id_habitacion
+    FROM NochesOcupadas
 )
-PIVOT (
-    COUNT(DISTINCT id_reserva)
-    FOR mes IN (
-        '01' AS Ene, '02' AS Feb, '03' AS Mar, '04' AS Abr, 
-        '05' AS May, '06' AS Jun, '07' AS Jul, '08' AS Ago, 
-        '09' AS Sep, '10' AS Oct, '11' AS Nov, '12' AS Dic
-    )
-)
-ORDER BY municipio;
+SELECT municipio,
+       anio,
+       SUM(CASE WHEN mes = 1 THEN 1 ELSE 0 END) AS ene,
+       SUM(CASE WHEN mes = 2 THEN 1 ELSE 0 END) AS feb,
+       SUM(CASE WHEN mes = 3 THEN 1 ELSE 0 END) AS mar,
+       SUM(CASE WHEN mes = 4 THEN 1 ELSE 0 END) AS abr,
+       SUM(CASE WHEN mes = 5 THEN 1 ELSE 0 END) AS may,
+       SUM(CASE WHEN mes = 6 THEN 1 ELSE 0 END) AS jun,
+       SUM(CASE WHEN mes = 7 THEN 1 ELSE 0 END) AS jul,
+       SUM(CASE WHEN mes = 8 THEN 1 ELSE 0 END) AS ago,
+       SUM(CASE WHEN mes = 9 THEN 1 ELSE 0 END) AS sep,
+       SUM(CASE WHEN mes = 10 THEN 1 ELSE 0 END) AS oct,
+       SUM(CASE WHEN mes = 11 THEN 1 ELSE 0 END) AS nov,
+       SUM(CASE WHEN mes = 12 THEN 1 ELSE 0 END) AS dic
+FROM NochesUnicas
+GROUP BY municipio, anio
+ORDER BY municipio, anio;
 
 
--- 2. Ingresos por municipio, tipo de alojamiento y temporada.
+-- C2. Ingresos por municipio, tipo de alojamiento y temporada.
 -- Usa el subtotal registrado y prioriza temporadas especiales.
 WITH NochesReserva AS (
     SELECT m.id_municipio,
@@ -35,11 +55,13 @@ WITH NochesReserva AS (
     JOIN alojamiento a ON h.id_alojamiento = a.id_alojamiento
     JOIN municipio m ON a.id_municipio = m.id_municipio
     JOIN tipo_alojamiento ta ON a.id_tipo_alojamiento = ta.id_tipo_alojamiento
+    JOIN reserva r ON r.id_reserva = rh.id_reserva
     CROSS JOIN LATERAL (
         SELECT LEVEL AS n
         FROM dual
         CONNECT BY LEVEL <= TRUNC(rh.fecha_checkout) - TRUNC(rh.fecha_checkin)
     ) n
+    WHERE r.estado <> 'CANCELADA'
 ),
 CandidatasTemporada AS (
     SELECT nr.*,
@@ -114,7 +136,7 @@ ORDER BY GROUPING(id_municipio),
          temporada;
 
 
--- 3. Tres alojamientos con mayor ingreso por municipio.
+-- C3. Tres alojamientos con mayor ingreso por municipio.
 WITH IngresosAlojamiento AS (
     SELECT m.id_municipio,
            m.nombre AS municipio,
@@ -125,6 +147,8 @@ WITH IngresosAlojamiento AS (
     JOIN alojamiento a ON m.id_municipio = a.id_municipio
     JOIN habitacion h ON a.id_alojamiento = h.id_alojamiento
     JOIN reserva_habitacion rh ON h.id_habitacion = rh.id_habitacion
+    JOIN reserva r ON r.id_reserva = rh.id_reserva
+    WHERE r.estado <> 'CANCELADA'
     GROUP BY m.id_municipio,
              m.nombre,
              a.id_alojamiento,
@@ -143,11 +167,13 @@ WHERE ranking <= 3
 ORDER BY municipio, ranking, alojamiento;
 
 
--- 4. Variación mensual de ingresos.
+-- C4. Variación mensual de ingresos (sin reservas canceladas).
 WITH IngresosMensuales AS (
     SELECT TRUNC(p.fecha_transaccion, 'MM') AS mes_anio,
            SUM(p.monto) AS ingresos_mes
     FROM pago p
+    JOIN reserva r ON r.id_reserva = p.id_reserva
+    WHERE r.estado <> 'CANCELADA'
     GROUP BY TRUNC(p.fecha_transaccion, 'MM')
 )
 SELECT 
@@ -161,7 +187,7 @@ FROM IngresosMensuales
 ORDER BY mes_anio;
 
 
--- 5. Reservas dentro de un rango de fechas.
+-- C5. Reservas dentro de un rango de fechas.
 SELECT r.id_reserva,
        c.nombre_completo AS cliente,
        a.nombre AS alojamiento,
@@ -178,7 +204,7 @@ WHERE rh.fecha_checkin >= TO_DATE(:fecha_inicio, 'YYYY-MM-DD')
 ORDER BY rh.fecha_checkin;
 
 
--- 6. Vista materializada de ocupación mensual.
+-- C6. Vista materializada de ocupación mensual.
 
 -- Elimina la vista previa si existe.
 BEGIN
@@ -204,20 +230,24 @@ FROM municipio m
 JOIN alojamiento a ON m.id_municipio = a.id_municipio
 JOIN habitacion h ON a.id_alojamiento = h.id_alojamiento
 JOIN reserva_habitacion rh ON h.id_habitacion = rh.id_habitacion
+JOIN reserva r ON r.id_reserva = rh.id_reserva
+WHERE r.estado <> 'CANCELADA'
 GROUP BY m.nombre, TO_CHAR(rh.fecha_checkin, 'YYYY-MM');
 
 -- COMPLETE mantiene exactitud con COUNT DISTINCT.
 -- ON DEMAND evita recalcular la vista en cada transacción.
 
 
--- 7. Resumen de pagos por método.
+-- C7. Resumen de pagos por método (sin reservas canceladas).
 WITH ResumenPagos AS (
     SELECT 
         SUM(CASE WHEN metodo = 'EFECTIVO' THEN monto ELSE 0 END) AS efectivo,
         SUM(CASE WHEN metodo = 'TARJETA' THEN monto ELSE 0 END) AS tarjeta,
         SUM(CASE WHEN metodo = 'TRANSFERENCIA' THEN monto ELSE 0 END) AS transferencia,
         SUM(CASE WHEN metodo = 'PSE' THEN monto ELSE 0 END) AS pse
-    FROM pago
+    FROM pago p
+    JOIN reserva r ON r.id_reserva = p.id_reserva
+    WHERE r.estado <> 'CANCELADA'
 )
 SELECT metodo_pago, total_recaudado
 FROM ResumenPagos
@@ -231,7 +261,7 @@ UNPIVOT (
 );
 
 
--- 8. Retención y ticket promedio por tipo de alojamiento.
+-- C8. Retención y ticket promedio por tipo de alojamiento.
 SELECT 
     ta.nombre AS tipo_alojamiento,
     COUNT(DISTINCT r.id_cliente) AS clientes_unicos,
@@ -243,5 +273,6 @@ JOIN habitacion h ON a.id_alojamiento = h.id_alojamiento
 JOIN reserva_habitacion rh ON h.id_habitacion = rh.id_habitacion
 JOIN reserva r ON rh.id_reserva = r.id_reserva
 JOIN pago p ON r.id_reserva = p.id_reserva
+WHERE r.estado <> 'CANCELADA'
 GROUP BY ta.nombre
 ORDER BY ticket_promedio_pago DESC;

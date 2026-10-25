@@ -51,6 +51,7 @@ CREATE TABLE usuario_sistema (
     rol                 VARCHAR2(50) NOT NULL,
     CONSTRAINT pk_usuario_sistema PRIMARY KEY (id_usuario),
     CONSTRAINT uk_usuario_username UNIQUE (username),
+    CONSTRAINT chk_usuario_rol CHECK (rol IN ('ADMIN', 'GESTOR', 'RECEPCIONISTA')),
     CONSTRAINT fk_usuario_alojamiento FOREIGN KEY (id_alojamiento) REFERENCES alojamiento(id_alojamiento)
 );
 
@@ -62,6 +63,8 @@ CREATE TABLE habitacion (
     capacidad           NUMBER NOT NULL,
     CONSTRAINT pk_habitacion PRIMARY KEY (id_habitacion),
     CONSTRAINT fk_hab_alojamiento FOREIGN KEY (id_alojamiento) REFERENCES alojamiento(id_alojamiento) ON DELETE CASCADE
+    ,CONSTRAINT uk_habitacion_alojamiento_numero UNIQUE (id_alojamiento, numero)
+    ,CONSTRAINT chk_habitacion_capacidad CHECK (capacidad BETWEEN 1 AND 20)
 );
 
 -- Temporadas.
@@ -71,6 +74,7 @@ CREATE TABLE temporada (
     fecha_inicio        DATE NOT NULL,
     fecha_fin           DATE NOT NULL,
     CONSTRAINT pk_temporada PRIMARY KEY (id_temporada)
+    ,CONSTRAINT chk_temporada_fechas CHECK (fecha_fin >= fecha_inicio)
 );
 
 -- Tarifas.
@@ -81,7 +85,9 @@ CREATE TABLE tarifa (
     valor_noche         NUMBER(12,2) NOT NULL,
     CONSTRAINT pk_tarifa PRIMARY KEY (id_tarifa),
     CONSTRAINT fk_tarifa_habitacion FOREIGN KEY (id_habitacion) REFERENCES habitacion(id_habitacion) ON DELETE CASCADE,
-    CONSTRAINT fk_tarifa_temporada FOREIGN KEY (id_temporada) REFERENCES temporada(id_temporada)
+    CONSTRAINT fk_tarifa_temporada FOREIGN KEY (id_temporada) REFERENCES temporada(id_temporada),
+    CONSTRAINT chk_tarifa_valor CHECK (valor_noche > 0),
+    CONSTRAINT uk_tarifa_habitacion_temporada UNIQUE (id_habitacion, id_temporada)
 );
 
 -- Clientes.
@@ -114,6 +120,7 @@ CREATE TABLE reserva (
     estado              VARCHAR2(30) NOT NULL,
     CONSTRAINT pk_reserva PRIMARY KEY (id_reserva),
     CONSTRAINT fk_reserva_cliente FOREIGN KEY (id_cliente) REFERENCES cliente(id_cliente)
+    ,CONSTRAINT chk_reserva_estado CHECK (estado IN ('PENDIENTE', 'CONFIRMADA', 'FINALIZADA', 'CANCELADA'))
 );
 
 -- Habitaciones reservadas.
@@ -126,7 +133,9 @@ CREATE TABLE reserva_habitacion (
     subtotal_calculado    NUMBER(12,2) NOT NULL,
     CONSTRAINT pk_reserva_habitacion PRIMARY KEY (id_reserva_habitacion),
     CONSTRAINT fk_reshab_reserva FOREIGN KEY (id_reserva) REFERENCES reserva(id_reserva) ON DELETE CASCADE,
-    CONSTRAINT fk_reshab_habitacion FOREIGN KEY (id_habitacion) REFERENCES habitacion(id_habitacion)
+    CONSTRAINT fk_reshab_habitacion FOREIGN KEY (id_habitacion) REFERENCES habitacion(id_habitacion),
+    CONSTRAINT chk_reserva_habitacion_fechas CHECK (fecha_checkout > fecha_checkin),
+    CONSTRAINT chk_reserva_habitacion_subtotal CHECK (subtotal_calculado >= 0)
 );
 
 -- Servicios reservados.
@@ -139,7 +148,9 @@ CREATE TABLE reserva_servicio (
     subtotal            NUMBER(12,2) NOT NULL,
     CONSTRAINT pk_reserva_servicio PRIMARY KEY (id_reserva_servicio),
     CONSTRAINT fk_resserv_reserva FOREIGN KEY (id_reserva) REFERENCES reserva(id_reserva) ON DELETE CASCADE,
-    CONSTRAINT fk_resserv_servicio FOREIGN KEY (id_servicio) REFERENCES servicio(id_servicio)
+    CONSTRAINT fk_resserv_servicio FOREIGN KEY (id_servicio) REFERENCES servicio(id_servicio),
+    CONSTRAINT chk_reserva_servicio_cantidad CHECK (cantidad > 0),
+    CONSTRAINT chk_reserva_servicio_subtotal CHECK (subtotal >= 0)
 );
 
 -- Pagos.
@@ -150,7 +161,9 @@ CREATE TABLE pago (
     monto               NUMBER(12,2) NOT NULL,
     metodo              VARCHAR2(50) NOT NULL,
     CONSTRAINT pk_pago PRIMARY KEY (id_pago),
-    CONSTRAINT fk_pago_reserva FOREIGN KEY (id_reserva) REFERENCES reserva(id_reserva) ON DELETE CASCADE
+    CONSTRAINT fk_pago_reserva FOREIGN KEY (id_reserva) REFERENCES reserva(id_reserva) ON DELETE CASCADE,
+    CONSTRAINT chk_pago_monto CHECK (monto > 0),
+    CONSTRAINT chk_pago_metodo CHECK (metodo IN ('EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'PSE'))
 );
 
 -- Reseñas.
@@ -166,3 +179,23 @@ CREATE TABLE resena (
     CONSTRAINT fk_resena_alojamiento FOREIGN KEY (id_alojamiento) REFERENCES alojamiento(id_alojamiento),
     CONSTRAINT chk_resena_calificacion CHECK (calificacion BETWEEN 1 AND 5)
 );
+
+COMMENT ON TABLE municipio IS 'Municipios del departamento del Quindio.';
+COMMENT ON TABLE tipo_alojamiento IS 'Catalogo de tipos de alojamiento.';
+COMMENT ON TABLE alojamiento IS 'Establecimientos turisticos registrados.';
+COMMENT ON TABLE usuario_sistema IS 'Usuarios autorizados para administrar alojamientos.';
+COMMENT ON TABLE habitacion IS 'Habitaciones disponibles por alojamiento.';
+COMMENT ON TABLE temporada IS 'Periodos que determinan la tarifa aplicable.';
+COMMENT ON TABLE tarifa IS 'Precio por noche de una habitacion en una temporada.';
+COMMENT ON TABLE cliente IS 'Personas que realizan reservas.';
+COMMENT ON TABLE servicio IS 'Servicios adicionales ofrecidos por un alojamiento.';
+COMMENT ON TABLE reserva IS 'Reservas realizadas por los clientes.';
+COMMENT ON TABLE reserva_habitacion IS 'Habitaciones y fechas incluidas en cada reserva.';
+COMMENT ON TABLE reserva_servicio IS 'Servicios adicionales consumidos en una reserva.';
+COMMENT ON TABLE pago IS 'Pagos asociados a las reservas.';
+COMMENT ON TABLE resena IS 'Calificaciones y comentarios de los clientes.';
+
+COMMENT ON COLUMN habitacion.numero IS 'Numero o codigo de habitacion, unico dentro del alojamiento.';
+COMMENT ON COLUMN reserva.estado IS 'PENDIENTE, CONFIRMADA, FINALIZADA o CANCELADA.';
+COMMENT ON COLUMN reserva_habitacion.subtotal_calculado IS 'Valor de las noches reservadas.';
+COMMENT ON COLUMN pago.metodo IS 'EFECTIVO, TARJETA, TRANSFERENCIA o PSE.';
