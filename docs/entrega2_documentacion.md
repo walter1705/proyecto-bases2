@@ -2,12 +2,9 @@
 
 ## Integrantes y repositorio
 
-- Integrante 1: ______________________________
-- Integrante 2: ______________________________
-- Integrante 3: ______________________________
-- Repositorio GitHub: ________________________
+- Integrante 1: Walter Granada
+- Integrante 2: Daniel Cubillos
 
-## Objetivo
 
 Esta entrega agrega la capa PL/SQL sobre el modelo relacional de la primera
 entrega. Se implementan cálculo de estadías, creación validada de reservas,
