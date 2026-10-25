@@ -12,6 +12,34 @@ WHERE object_name IN (
 )
 ORDER BY object_type, object_name;
 
+-- Limpieza preventiva para permitir repetir la prueba tras una ejecución
+-- interrumpida.
+DELETE FROM reserva_habitacion
+WHERE id_reserva IN (
+    SELECT r.id_reserva
+    FROM reserva r
+    JOIN cliente c ON c.id_cliente = r.id_cliente
+    WHERE c.identificacion = 'E2-PRUEBA'
+);
+DELETE FROM reserva
+WHERE id_cliente IN (
+    SELECT id_cliente FROM cliente WHERE identificacion = 'E2-PRUEBA'
+);
+DELETE FROM auditoria_tarifa
+WHERE id_tarifa IN (
+    SELECT t.id_tarifa
+    FROM tarifa t
+    JOIN temporada s ON s.id_temporada = t.id_temporada
+    WHERE s.nombre = 'PRUEBA E2'
+);
+DELETE FROM tarifa
+WHERE id_temporada IN (
+    SELECT id_temporada FROM temporada WHERE nombre = 'PRUEBA E2'
+);
+DELETE FROM temporada WHERE nombre = 'PRUEBA E2';
+DELETE FROM cliente WHERE identificacion = 'E2-PRUEBA';
+COMMIT;
+
 SAVEPOINT inicio_pruebas_entrega2;
 
 DECLARE
@@ -100,5 +128,31 @@ WHERE name IN ('PKG_TURISMOUQ', 'TRG_AUDITORIA_TARIFA',
                'TRG_CONTROL_SOLAPAMIENTO_RH', 'TRG_CONTROL_SOLAPAMIENTO_ESTADO')
 ORDER BY name, sequence;
 
-ROLLBACK TO inicio_pruebas_entrega2;
-PROMPT Pruebas finalizadas; los datos de demostracion fueron revertidos.
+-- DBMS_MVIEW.REFRESH puede confirmar implicitamente la transaccion y dejar
+-- invalido el savepoint. Por eso la limpieza final es explicita e idempotente.
+DELETE FROM reserva_habitacion
+WHERE id_reserva IN (
+    SELECT r.id_reserva
+    FROM reserva r
+    JOIN cliente c ON c.id_cliente = r.id_cliente
+    WHERE c.identificacion = 'E2-PRUEBA'
+);
+DELETE FROM reserva
+WHERE id_cliente IN (
+    SELECT id_cliente FROM cliente WHERE identificacion = 'E2-PRUEBA'
+);
+DELETE FROM auditoria_tarifa
+WHERE id_tarifa IN (
+    SELECT t.id_tarifa
+    FROM tarifa t
+    JOIN temporada s ON s.id_temporada = t.id_temporada
+    WHERE s.nombre = 'PRUEBA E2'
+);
+DELETE FROM tarifa
+WHERE id_temporada IN (
+    SELECT id_temporada FROM temporada WHERE nombre = 'PRUEBA E2'
+);
+DELETE FROM temporada WHERE nombre = 'PRUEBA E2';
+DELETE FROM cliente WHERE identificacion = 'E2-PRUEBA';
+COMMIT;
+PROMPT Pruebas finalizadas; los datos de demostracion fueron limpiados.
