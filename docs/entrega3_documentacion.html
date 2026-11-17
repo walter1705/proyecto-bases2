@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Entrega 3 - TurismoUQ</title>
+<style>
+body { font-family: "Liberation Serif", serif; margin: 2cm; line-height: 1.45; }
+h1, h2, h3 { color: #1f3a5f; }
+.cover { text-align: center; margin-top: 3cm; margin-bottom: 4cm; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+th, td { border: 1px solid #777; padding: 6px; text-align: left; }
+.pending { background: #fff2cc; }
+.footer { margin-top: 1cm; color: #555; }
+</style>
+</head>
+<body>
+<div class="cover">
+<h1>UNIVERSIDAD DEL QUINDÍO</h1>
+<h2>Entrega 3 – TurismoUQ</h2>
+<p><b>Curso:</b> Bases de Datos II</p>
+<p><b>Integrantes:</b> Walter Jhosepe Granada Bastidas y Daniel Cubillos Grimaldos</p>
+</div>
+
+<h2>1. Introducción</h2>
+<p>Esta entrega integra sobre el modelo existente transacciones, concurrencia, optimización y seguridad en Oracle Database XE 21c. Los resultados reales permanecen identificados como pendientes hasta su ejecución en una instancia Oracle.</p>
+
+<h2>2. Objetivos</h2>
+<ul>
+<li>Registrar reserva y pago como operación atómica.</li>
+<li>Demostrar el control concurrente con dos sesiones.</li>
+<li>Analizar planes y costos antes y después de índices.</li>
+<li>Aplicar mínimo privilegio mediante perfil, roles y usuarios.</li>
+</ul>
+
+<h2>3. Transacciones</h2>
+<p>El procedimiento <code>sp_reserva_pago_atomico</code> crea un SAVEPOINT, valida datos, bloquea la habitación mediante <code>SELECT ... FOR UPDATE</code>, calcula el valor, crea la reserva y registra el pago. Ante una excepción vuelve al SAVEPOINT y propaga el error. El procedimiento no ejecuta COMMIT.</p>
+
+<h3>Pruebas preparadas</h3>
+<p><code>db/12_pruebas_entrega3.sql</code> contiene una operación exitosa y una operación rechazada por pago distinto al valor calculado. Incluye consultas de estado antes y después y limpieza idempotente.</p>
+<p class="pending"><b>Espacio para evidencia real:</b> capture el COMMIT exitoso, el ROLLBACK al SAVEPOINT y las consultas de reserva y pago.</p>
+
+<h2>4. Concurrencia</h2>
+<p><code>db/09_sesion_a.sql</code> y <code>db/09_sesion_b.sql</code> permiten ejecutar dos sesiones independientes sobre la misma habitación y fechas. El bloqueo de HABITACION fuerza la serialización de la comprobación y evita que ambas transacciones confirmen reservas incompatibles.</p>
+<p class="pending"><b>Espacio para evidencia real:</b> inserte las capturas de <code>V$LOCK</code>, el bloqueo en espera y el resultado final de reservas.</p>
+
+<h2>5. Índices y optimización</h2>
+<p><code>db/10_indices.sql</code> incluye los índices siguientes:</p>
+<ol>
+<li><code>ix_rh_habitacion_fechas</code>: índice compuesto para disponibilidad por habitación y fechas.</li>
+<li><code>ix_pago_fecha_funcion</code>: índice sobre <code>TRUNC(fecha_transaccion)</code>.</li>
+<li><code>ix_reserva_cliente_estado</code>: índice compuesto para reservas por cliente y estado.</li>
+<li><code>ix_reserva_estado_no_mejora</code>: caso deliberado de baja selectividad.</li>
+</ol>
+<p>El script obtiene EXPLAIN PLAN antes y después, actualiza estadísticas y deja preparada la consulta de <code>DBMS_XPLAN.DISPLAY_CURSOR</code> para estadísticas reales.</p>
+<p class="pending"><b>Planes pendientes:</b> no se inventaron resultados. Capture los planes, cardinalidades y costos obtenidos por la ejecución real.</p>
+
+<h2>6. Seguridad</h2>
+<p><code>db/11_seguridad.sql</code> crea el perfil y los usuarios; <code>db/11_seguridad_propietario.sql</code> crea las vistas y otorga privilegios.</p>
+<table>
+<tr><th>Rol</th><th>Acceso</th><th>Restricción</th></tr>
+<tr><td>Recepción</td><td>Vistas y paquete</td><td>No accede directamente a tablas base</td></tr>
+<tr><td>Administrador de alojamiento</td><td>Alojamiento, habitación, tarifa y servicio</td><td>Sin privilegios administrativos globales</td></tr>
+<tr><td>Gerente</td><td>Reportes, ocupación y liquidación</td><td>Sin modificación operativa</td></tr>
+<tr><td>Auditor</td><td>Vistas y datos de auditoría seleccionados</td><td>Lectura controlada sin escritura</td></tr>
+</table>
+<p class="pending"><b>Espacio para evidencia real:</b> capture las consultas autorizadas y denegadas de recepción.</p>
+
+<h2>7. Comandos de ejecución</h2>
+<pre>
+@db/01_ddl.sql
+@db/03_carga_datos.sql
+@db/04_paquete_plsql.sql
+@db/05_triggers.sql
+@db/06_tablespace_vista_materializada.sql
+@db/08_transacciones.sql
+@db/10_indices.sql
+@db/12_pruebas_entrega3.sql
+</pre>
+
+<h2>8. Revisión de la rúbrica</h2>
+<table>
+<tr><th>Requisito</th><th>Estado</th></tr>
+<tr><td>Operación atómica reserva-pago</td><td>Implementado</td></tr>
+<tr><td>SAVEPOINT y excepciones</td><td>Implementado</td></tr>
+<tr><td>Experimento de concurrencia</td><td>Scripts preparados</td></tr>
+<tr><td>Índice compuesto</td><td>Implementado</td></tr>
+<tr><td>Índice basado en función</td><td>Implementado</td></tr>
+<tr><td>Caso sin mejora</td><td>Implementado</td></tr>
+<tr><td>Cuatro roles y perfil</td><td>Implementado</td></tr>
+<tr><td>Evidencia Oracle real</td><td>Pendiente de ejecución</td></tr>
+</table>
+
+<h2>9. Conclusiones</h2>
+<p>El proyecto incorpora las tres áreas técnicas principales sin sustituir el diseño de las entregas anteriores. Las pruebas reales, las capturas y las métricas deben completarse únicamente después de ejecutar los scripts en Oracle XE 21c.</p>
+
+<p class="footer">Documento académico preparado sin afirmar ejecución o resultados no verificados.</p>
+</body>
+</html>

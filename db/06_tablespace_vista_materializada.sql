@@ -29,93 +29,19 @@ EXCEPTION
 END;
 /
 
-BEGIN
-    EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW LOG ON reserva_habitacion';
-EXCEPTION
-    WHEN OTHERS THEN
-        IF SQLCODE != -12003 THEN
-            RAISE;
-        END IF;
-END;
-/
-
-BEGIN
-    EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW LOG ON reserva';
-EXCEPTION
-    WHEN OTHERS THEN
-        IF SQLCODE != -12003 THEN
-            RAISE;
-        END IF;
-END;
-/
-
-BEGIN
-    EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW LOG ON habitacion';
-EXCEPTION
-    WHEN OTHERS THEN
-        IF SQLCODE != -12003 THEN
-            RAISE;
-        END IF;
-END;
-/
-
-BEGIN
-    EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW LOG ON alojamiento';
-EXCEPTION
-    WHEN OTHERS THEN
-        IF SQLCODE != -12003 THEN
-            RAISE;
-        END IF;
-END;
-/
-
-BEGIN
-    EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW LOG ON municipio';
-EXCEPTION
-    WHEN OTHERS THEN
-        IF SQLCODE != -12003 THEN
-            RAISE;
-        END IF;
-END;
-/
-
 CREATE MATERIALIZED VIEW LOG ON reserva_habitacion
-WITH PRIMARY KEY, ROWID, SEQUENCE (
-    id_reserva, id_habitacion, fecha_checkin, fecha_checkout
-) INCLUDING NEW VALUES;
-
-CREATE MATERIALIZED VIEW LOG ON reserva
-WITH PRIMARY KEY, ROWID, SEQUENCE (estado) INCLUDING NEW VALUES;
-
-CREATE MATERIALIZED VIEW LOG ON habitacion
-WITH PRIMARY KEY, ROWID, SEQUENCE (id_alojamiento) INCLUDING NEW VALUES;
-
-CREATE MATERIALIZED VIEW LOG ON alojamiento
-WITH PRIMARY KEY, ROWID, SEQUENCE (nombre, id_municipio) INCLUDING NEW VALUES;
-
-CREATE MATERIALIZED VIEW LOG ON municipio
-WITH PRIMARY KEY, ROWID, SEQUENCE (nombre) INCLUDING NEW VALUES;
+WITH ROWID, SEQUENCE (id_habitacion, fecha_checkin, fecha_checkout)
+INCLUDING NEW VALUES;
 
 CREATE MATERIALIZED VIEW mv_ocupacion_mensual
 BUILD IMMEDIATE
 REFRESH FAST ON COMMIT
 AS
 SELECT
-    EXTRACT(YEAR FROM TRUNC(rh.fecha_checkin, 'MM')) anio,
-    EXTRACT(MONTH FROM TRUNC(rh.fecha_checkin, 'MM')) mes,
-    a.id_alojamiento,
-    a.nombre alojamiento,
-    mu.nombre municipio,
-    SUM(TRUNC(rh.fecha_checkout) - TRUNC(rh.fecha_checkin)) noches_ocupadas,
-    COUNT(*) reservas_habitacion
-FROM reserva_habitacion rh
-JOIN reserva r ON r.id_reserva = rh.id_reserva
-JOIN habitacion h ON h.id_habitacion = rh.id_habitacion
-JOIN alojamiento a ON a.id_alojamiento = h.id_alojamiento
-JOIN municipio mu ON mu.id_municipio = a.id_municipio
-WHERE r.estado IN ('CONFIRMADA', 'FINALIZADA')
-GROUP BY
-    TRUNC(rh.fecha_checkin, 'MM'),
-    a.id_alojamiento,
-    a.nombre,
-    mu.nombre;
+    TRUNC(fecha_checkin, 'MM') mes_inicio,
+    id_habitacion,
+    COUNT(*) reservas_habitacion,
+    COUNT(TRUNC(fecha_checkout) - TRUNC(fecha_checkin)) conteo_noches,
+    SUM(TRUNC(fecha_checkout) - TRUNC(fecha_checkin)) noches_ocupadas
+FROM reserva_habitacion
+GROUP BY TRUNC(fecha_checkin, 'MM'), id_habitacion;

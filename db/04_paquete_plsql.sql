@@ -114,7 +114,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_turismouq AS
 
         BEGIN
             SELECT capacidad INTO l_capacidad
-            FROM habitacion WHERE id_habitacion = p_id_habitacion;
+            FROM habitacion
+            WHERE id_habitacion = p_id_habitacion
+            FOR UPDATE;
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
                 raise_application_error(c_habitacion_noexiste,
