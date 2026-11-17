@@ -14,9 +14,6 @@ tarifas, clientes, reservas, servicios, pagos y reseñas.
 - `db/06_tablespace_vista_materializada.sql`: tablespace administrativo y ocupación mensual.
 - `db/06_tablespace_admin.sql`: creación del tablespace como SYS/SYSTEM.
 - `db/07_pruebas_entrega2.sql`: pruebas reproducibles de la segunda entrega.
-- `docs/entrega2_documentacion.md`: documentación técnica de la entrega.
-  `PIVOT`, `ROLLUP`, funciones de ventana, una consulta parametrizada, una vista
-  materializada y `UNPIVOT`.
 - `data/poblado_datos.py`: genera datos de prueba en español y los inserta en
   Oracle mediante cargas por lotes.
 - `data/requirements.txt`: dependencias de Python para poblar la base.

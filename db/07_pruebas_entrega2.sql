@@ -119,8 +119,6 @@ FROM mv_ocupacion_mensual
 WHERE anio = 2024 AND mes = 1
 FETCH FIRST 10 ROWS ONLY;
 
-EXEC DBMS_MVIEW.REFRESH('MV_OCUPACION_MENSUAL', 'C');
-
 PROMPT === Errores de compilacion ===
 SELECT name, type, line, position, text
 FROM user_errors
@@ -128,8 +126,6 @@ WHERE name IN ('PKG_TURISMOUQ', 'TRG_AUDITORIA_TARIFA',
                'TRG_CONTROL_SOLAPAMIENTO_RH', 'TRG_CONTROL_SOLAPAMIENTO_ESTADO')
 ORDER BY name, sequence;
 
--- DBMS_MVIEW.REFRESH puede confirmar implicitamente la transaccion y dejar
--- invalido el savepoint. Por eso la limpieza final es explicita e idempotente.
 DELETE FROM reserva_habitacion
 WHERE id_reserva IN (
     SELECT r.id_reserva
