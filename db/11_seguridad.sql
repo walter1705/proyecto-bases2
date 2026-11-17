@@ -1,0 +1,98 @@
+-- Entrega 3: perfil, roles y usuarios de prueba.
+-- Ejecutar esta seccion como SYS o un administrador autorizado.
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP USER tu_auditor CASCADE';
+EXCEPTION WHEN OTHERS THEN
+    IF SQLCODE != -1918 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP USER tu_gerente CASCADE';
+EXCEPTION WHEN OTHERS THEN
+    IF SQLCODE != -1918 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP USER tu_admin CASCADE';
+EXCEPTION WHEN OTHERS THEN
+    IF SQLCODE != -1918 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP USER tu_recepcion CASCADE';
+EXCEPTION WHEN OTHERS THEN
+    IF SQLCODE != -1918 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP ROLE rol_tu_auditor';
+EXCEPTION WHEN OTHERS THEN
+    IF SQLCODE != -1919 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP ROLE rol_tu_gerente';
+EXCEPTION WHEN OTHERS THEN
+    IF SQLCODE != -1919 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP ROLE rol_tu_admin_alojamiento';
+EXCEPTION WHEN OTHERS THEN
+    IF SQLCODE != -1919 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP ROLE rol_tu_recepcion';
+EXCEPTION WHEN OTHERS THEN
+    IF SQLCODE != -1919 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP PROFILE tu_app_profile';
+EXCEPTION WHEN OTHERS THEN
+    IF SQLCODE != -2380 THEN RAISE; END IF;
+END;
+/
+
+CREATE PROFILE tu_app_profile LIMIT
+    SESSIONS_PER_USER 2
+    IDLE_TIME 30
+    FAILED_LOGIN_ATTEMPTS 5
+    PASSWORD_LIFE_TIME 90
+    PASSWORD_LOCK_TIME 1;
+
+CREATE ROLE rol_tu_recepcion;
+CREATE ROLE rol_tu_admin_alojamiento;
+CREATE ROLE rol_tu_gerente;
+CREATE ROLE rol_tu_auditor;
+
+CREATE USER tu_recepcion IDENTIFIED BY "Laboratorio_2026"
+    DEFAULT TABLESPACE USERS TEMPORARY TABLESPACE TEMP
+    PROFILE tu_app_profile;
+CREATE USER tu_admin IDENTIFIED BY "Laboratorio_2026"
+    DEFAULT TABLESPACE USERS TEMPORARY TABLESPACE TEMP
+    PROFILE tu_app_profile;
+CREATE USER tu_gerente IDENTIFIED BY "Laboratorio_2026"
+    DEFAULT TABLESPACE USERS TEMPORARY TABLESPACE TEMP
+    PROFILE tu_app_profile;
+CREATE USER tu_auditor IDENTIFIED BY "Laboratorio_2026"
+    DEFAULT TABLESPACE USERS TEMPORARY TABLESPACE TEMP
+    PROFILE tu_app_profile;
+
+GRANT CREATE SESSION TO tu_recepcion, tu_admin, tu_gerente, tu_auditor;
+GRANT rol_tu_recepcion TO tu_recepcion;
+GRANT rol_tu_admin_alojamiento TO tu_admin;
+GRANT rol_tu_gerente TO tu_gerente;
+GRANT rol_tu_auditor TO tu_auditor;
+
+-- Las siguientes vistas y GRANT deben ejecutarse como USUARIO_TURISMOUQ.
